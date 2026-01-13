@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pulsetto Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .status-value {
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .intensity-control {
+            margin: 20px 0;
+        }
+
+        .intensity-display {
+            text-align: center;
+            font-size: 3em;
+            font-weight: 700;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .intensity-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .intensity-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .intensity-slider::-moz-range-thumb {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: 700;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .preset-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .preset-info {
+            flex: 1;
+        }
+
+        .preset-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .preset-details {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .preset-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Pulsetto</h1>
+            <p>Vagus Nerve Stimulator</p>
+        </div>
+
+        <!-- Connection Card -->
+        <div class="card">
+            <button id="connectBtn" class="btn btn-primary">Connect to Device</button>
+            <div id="deviceInfo" class="hidden" style="margin-top: 15px;">
+                <div class="status">
+                    <span class="status-label">Device:</span>
+                    <span class="status-value" id="deviceName">-</span>
+                </div>
+                <div class="status">
+                    <span class="status-label">Firmware:</span>
+                    <span class="status-value" id="firmware">-</span>
+                </div>
+                <div class="status">
+                    <span class="status-label">Battery:</span>
+                    <span class="status-value" id="battery">-</span>
+                </div>
+                <div class="status">
+                    <span class="status-label">Mode:</span>
+                    <span class="status-value" id="mode">OFF</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Card -->
+        <div id="controlCard" class="card hidden">
+            <h3 style="margin-bottom: 15px;">Mode Selection</h3>
+            <div class="mode-buttons">
+                <button class="mode-btn" data-mode="A">LEFT</button>
+                <button class="mode-btn" data-mode="C">RIGHT</button>
+                <button class="mode-btn" data-mode="D">BOTH</button>
+            </div>
+
+            <h3 style="margin-bottom: 15px;">Intensity</h3>
+            <div class="intensity-control">
+                <div class="intensity-display" id="intensityDisplay">0</div>
+                <input type="range" class="intensity-slider" id="intensitySlider" min="0" max="9" value="0">
+            </div>
+
+            <h3 style="margin-bottom: 15px;">Session Timer</h3>
+            <div class="timer" id="timer">00:00</div>
+            <div class="grid-2">
+                <button id="startBtn" class="btn btn-success">Start</button>
+                <button id="stopBtn" class="btn btn-danger">Stop</button>
+            </div>
+        </div>
+
+        <!-- Presets Card -->
+        <div id="presetsCard" class="card hidden">
+            <h3 style="margin-bottom: 15px;">Saved Presets</h3>
+            <div id="presetsList"></div>
+            <button id="addPresetBtn" class="btn btn-secondary" style="margin-top: 15px;">+ Add Preset</button>
+        </div>
+
+        <!-- Add Preset Modal -->
+        <div id="presetModal" class="card hidden">
+            <h3 style="margin-bottom: 15px;">Create Preset</h3>
+            <div class="input-group">
+                <label>Preset Name</label>
+                <input type="text" id="presetName" placeholder="e.g., Morning Routine">
+            </div>
+            <div class="input-group">
+                <label>Mode</label>
+                <select id="presetMode">
+                    <option value="A">LEFT</option>
+                    <option value="C">RIGHT</option>
+                    <option value="D">BOTH</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Intensity (1-9)</label>
+                <input type="number" id="presetIntensity" min="1" max="9" value="5">
+            </div>
+            <div class="input-group">
+                <label>Duration (minutes)</label>
+                <input type="number" id="presetDuration" min="1" max="60" value="6">
+            </div>
+            <div class="grid-2">
+                <button id="savePresetBtn" class="btn btn-success">Save</button>
+                <button id="cancelPresetBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Pulsetto Controller
+        class PulsettoController {
+            constructor() {
+                this.device = null;
+                this.server = null;
+                this.service = null;
+                this.txCharacteristic = null;
+                this.rxCharacteristic = null;
+                this.currentMode = null;
+                this.currentIntensity = 0;
+                this.sessionActive = false;
+                this.sessionStartTime = null;
+                this.timerInterval = null;
+                this.presets = this.loadPresets();
+                
+                // UUIDs from traffic analysis
+                this.SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+                this.CHAR_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+                
+                this.initUI();
+            }
+
+            initUI() {
+                // Connect button
+                document.getElementById('connectBtn').addEventListener('click', () => this.connect());
+                
+                // Mode buttons
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const mode = e.target.dataset.mode;
+                        this.setMode(mode);
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                    });
+                });
+                
+                // Intensity slider
+                const slider = document.getElementById('intensitySlider');
+                const display = document.getElementById('intensityDisplay');
+                slider.addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    display.textContent = value;
+                    if (this.sessionActive) {
+                        this.setIntensity(value);
+                    }
+                });
+                
+                // Session controls
+                document.getElementById('startBtn').addEventListener('click', () => this.startSession());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopSession());
+                
+                // Preset controls
+                document.getElementById('addPresetBtn').addEventListener('click', () => this.showPresetModal());
+                document.getElementById('savePresetBtn').addEventListener('click', () => this.savePreset());
+                document.getElementById('cancelPresetBtn').addEventListener('click', () => this.hidePresetModal());
+                
+                this.renderPresets();
+            }
+
+            async connect() {
+                try {
+                    console.log('Requesting Bluetooth Device...');
+                    this.device = await navigator.bluetooth.requestDevice({
+                        filters: [{ namePrefix: 'Pulsetto' }],
+                        optionalServices: [this.SERVICE_UUID]
+                    });
+
+                    console.log('Connecting to GATT Server...');
+                    this.server = await this.device.gatt.connect();
+
+                    console.log('Getting Service...');
+                    this.service = await this.server.getPrimaryService(this.SERVICE_UUID);
+
+                    console.log('Getting Characteristic...');
+                    this.txCharacteristic = await this.service.getCharacteristic(this.CHAR_UUID);
+                    this.rxCharacteristic = this.txCharacteristic;
+
+                    // Start notifications
+                    await this.rxCharacteristic.startNotifications();
+                    this.rxCharacteristic.addEventListener('characteristicvaluechanged', (e) => this.handleNotification(e));
+
+                    console.log('Connected!');
+                    this.onConnected();
+                } catch (error) {
+                    console.error('Connection failed:', error);
+                    alert('Failed to connect: ' + error.message);
+                }
+            }
+
+            async onConnected() {
+                document.getElementById('connectBtn').textContent = 'Connected ✓';
+                document.getElementById('connectBtn').classList.remove('btn-primary');
+                document.getElementById('connectBtn').classList.add('btn-success');
+                document.getElementById('connectBtn').disabled = true;
+                
+                document.getElementById('deviceInfo').classList.remove('hidden');
+                document.getElementById('controlCard').classList.remove('hidden');
+                document.getElementById('presetsCard').classList.remove('hidden');
+                
+                // Query device info
+                await this.sendCommand('i');
+                await this.delay(100);
+                await this.sendCommand('v');
+                await this.delay(100);
+                await this.sendCommand('Q');
+                
+                // Start status polling
+                this.startStatusPolling();
+            }
+
+            async sendCommand(cmd) {
+                if (!this.txCharacteristic) return;
+                
+                const data = cmd + '\n';
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(data);
+                
+                console.log('Sending:', data.trim());
+                await this.txCharacteristic.writeValue(bytes);
+            }
+
+            handleNotification(event) {
+                const decoder = new TextDecoder();
+                const value = decoder.decode(event.target.value);
+                console.log('Received:', value);
+                
+                // Parse responses
+                if (value.startsWith('Pulsetto_')) {
+                    document.getElementById('deviceName').textContent = value.trim();
+                } else if (value.startsWith('fw:')) {
+                    document.getElementById('firmware').textContent = value.trim();
+                } else if (value.includes('Batt:')) {
+                    const voltage = value.split('Batt:')[1].trim();
+                    document.getElementById('battery').textContent = voltage + 'V';
+                } else if (value.includes('mode:')) {
+                    const mode = value.split('mode:')[1].trim();
+                    const modeText = mode === '0' ? 'OFF' : mode === 'A' ? 'LEFT' : mode === 'C' ? 'RIGHT' : mode === 'D' ? 'BOTH' : mode;
+                    document.getElementById('mode').textContent = modeText;
+                }
+            }
+
+            async setMode(mode) {
+                this.currentMode = mode;
+                await this.sendCommand(mode);
+            }
+
+            async setIntensity(level) {
+                this.currentIntensity = level;
+                await this.sendCommand(level.toString());
+            }
+
+            async startSession() {
+                if (!this.currentMode) {
+                    alert('Please select a mode first');
+                    return;
+                }
+                
+                this.sessionActive = true;
+                this.sessionStartTime = Date.now();
+                
+                // Start with selected mode and intensity
+                await this.setMode(this.currentMode);
+                await this.delay(100);
+                const intensity = parseInt(document.getElementById('intensitySlider').value);
+                if (intensity > 0) {
+                    await this.setIntensity(intensity);
+                }
+                
+                // Start timer
+                this.timerInterval = setInterval(() => this.updateTimer(), 1000);
+                
+                document.getElementById('startBtn').disabled = true;
+            }
+
+            async stopSession() {
+                this.sessionActive = false;
+                
+                // Stop timer
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                
+                // End session
+                await this.sendCommand('-');
+                
+                // Reset UI
+                document.getElementById('timer').textContent = '00:00';
+                document.getElementById('startBtn').disabled = false;
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            }
+
+            updateTimer() {
+                if (!this.sessionStartTime) return;
+                
+                const elapsed = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            startStatusPolling() {
+                setInterval(async () => {
+                    if (this.txCharacteristic) {
+                        await this.sendCommand('Q');
+                    }
+                }, 3000);
+            }
+
+            // Preset management
+            loadPresets() {
+                const saved = localStorage.getItem('pulsetto_presets');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            savePresetsToStorage() {
+                localStorage.setItem('pulsetto_presets', JSON.stringify(this.presets));
+            }
+
+            showPresetModal() {
+                document.getElementById('presetModal').classList.remove('hidden');
+            }
+
+            hidePresetModal() {
+                document.getElementById('presetModal').classList.add('hidden');
+                document.getElementById('presetName').value = '';
+            }
+
+            savePreset() {
+                const name = document.getElementById('presetName').value.trim();
+                const mode = document.getElementById('presetMode').value;
+                const intensity = parseInt(document.getElementById('presetIntensity').value);
+                const duration = parseInt(document.getElementById('presetDuration').value);
+                
+                if (!name) {
+                    alert('Please enter a preset name');
+                    return;
+                }
+                
+                this.presets.push({ name, mode, intensity, duration });
+                this.savePresetsToStorage();
+                this.renderPresets();
+                this.hidePresetModal();
+            }
+
+            deletePreset(index) {
+                if (confirm('Delete this preset?')) {
+                    this.presets.splice(index, 1);
+                    this.savePresetsToStorage();
+                    this.renderPresets();
+                }
+            }
+
+            async loadPreset(preset) {
+                // Set mode
+                this.currentMode = preset.mode;
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.mode === preset.mode);
+                });
+                
+                // Set intensity
+                document.getElementById('intensitySlider').value = preset.intensity;
+                document.getElementById('intensityDisplay').textContent = preset.intensity;
+                
+                // Start session
+                await this.startSession();
+                
+                // Auto-stop after duration
+                setTimeout(() => {
+                    this.stopSession();
+                }, preset.duration * 60 * 1000);
+            }
+
+            renderPresets() {
+                const list = document.getElementById('presetsList');
+                if (this.presets.length === 0) {
+                    list.innerHTML = '<p style="opacity: 0.7; text-align: center;">No presets saved</p>';
+                    return;
+                }
+                
+                list.innerHTML = this.presets.map((preset, index) => `
+                    <div class="preset-item">
+                        <div class="preset-info">
+                            <div class="preset-name">${preset.name}</div>
+                            <div class="preset-details">
+                                ${preset.mode === 'A' ? 'LEFT' : preset.mode === 'C' ? 'RIGHT' : 'BOTH'} • 
+                                Intensity ${preset.intensity} • 
+                                ${preset.duration} min
+                            </div>
+                        </div>
+                        <div class="preset-actions">
+                            <button class="preset-btn" onclick="controller.loadPreset(controller.presets[${index}])">Load</button>
+                            <button class="preset-btn" onclick="controller.deletePreset(${index})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize controller
+        const controller = new PulsettoController();
+    </script>
+</body>
+</html>
