@@ -10,7 +10,7 @@
         .mythical-card {
             background: #1e293b;
             border: 1px solid #334155;
-            transition: all 0.2s ease;
+            transition: border 0.2s ease;
         }
         .mythical-card:hover { border-color: #f97316; }
         .gradient-text {
@@ -18,22 +18,328 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        input, select { background: #0f172a !important; border-color: #334155 !important; color: white !important; }
-        input:focus, select:focus { border-color: #f97316 !important; ring: 0 !important; outline: none !important; }
+        input, select { background: #0f172a !important; border-color: #334155 !important; color: white !important; outline: none !important; }
+        input:focus, select:focus { border-color: #f97316 !important; }
         ::-webkit-calendar-picker-indicator { filter: invert(1); }
-        .tab-active { background-color: #ea580c !important; color: white !important; }
-        .app-btn { background: #f97316; color: white; }
+        .tab-active { background-color: #f97316 !important; color: white !important; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
     <div id="app" class="max-w-xl mx-auto">
         <!-- Header -->
-        <header class="mb-10 text-center">
+        <header class="mb-8 text-center">
             <h1 class="text-3xl font-black uppercase tracking-tighter italic gradient-text">Mythical Tracker</h1>
-            <p class="text-slate-400 text-sm mt-1">Direct App Integration</p>
+            <p class="text-slate-400 text-sm mt-1">Direct App Integration • Offline Persistent</p>
         </header>
 
-        <!-- Setup View -->
+        <!-- View 1: Initial Data Load -->
+        <div id="view-upload" class="hidden space-y-6">
+            <div class="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-xl text-center">
+                <div class="w-16 h-16 bg-orange-600/20 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📁</div>
+                <h2 class="text-xl font-bold mb-2">Upload YouTube Snapshot</h2>
+                <p class="text-slate-400 text-sm mb-6">Upload your "Good Mythical Morning - YouTube" file to build your local database.</p>
+                <input type="file" id="file-input" class="hidden" accept=".html,.mhtml">
+                <button onclick="document.getElementById('file-input').click()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-2xl font-bold transition">
+                    Select File
+                </button>
+                <p id="parse-status" class="mt-4 text-[10px] text-orange-400 font-bold uppercase"></p>
+            </div>
+        </div>
+
+        <!-- View 2: Setup (Pick your spot) -->
+        <div id="view-setup" class="hidden space-y-6">
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Where did you leave off?</h2>
+                    <button onclick="localStorage.clear(); location.reload();" class="text-[10px] text-slate-500 hover:text-red-400 uppercase font-bold">Clear Data</button>
+                </div>
+
+                <div class="flex gap-2 mb-4 p-1 bg-slate-900 rounded-xl">
+                    <button onclick="setSelectMode('title')" id="tab-title" class="flex-1 py-2 rounded-lg text-xs font-bold tab-active">Search Title</button>
+                    <button onclick="setSelectMode('date')" id="tab-date" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400">Jump to Date</button>
+                </div>
+
+                <div id="setup-title-ui">
+                    <input type="text" id="setup-search" placeholder="Search (e.g. 'March 2025' or 'Pizza')..." class="w-full p-3 rounded-xl text-sm border mb-4">
+                </div>
+                <div id="setup-date-ui" class="hidden">
+                    <input type="date" id="setup-date-jump" class="w-full p-3 rounded-xl text-sm border mb-4">
+                </div>
+
+                <select id="video-select" size="6" class="w-full rounded-xl p-2 text-xs mb-6 h-48 border">
+                    <!-- Options -->
+                </select>
+
+                <button onclick="confirmPosition()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-2xl transition">
+                    Start Catching Up
+                </button>
+            </div>
+        </div>
+
+        <!-- View 3: The Queue -->
+        <div id="view-queue" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-300">Up Next</h2>
+                    <p id="queue-status" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest"></p>
+                </div>
+                <button onclick="showSetup()" class="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-orange-500 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                </button>
+            </div>
+
+            <div id="queue-container" class="space-y-4"></div>
+
+            <div id="done-state" class="hidden text-center py-20 bg-slate-800/50 rounded-3xl border border-dashed border-slate-700">
+                <p class="text-slate-400 italic">You're current with your snapshot!</p>
+                <button onclick="showSetup()" class="mt-4 text-orange-500 font-bold text-xs uppercase underline">Go back</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DATA KEYS
+        const DB_KEY = 'gmm_videos_v5';
+        const POS_KEY = 'gmm_current_pos_v5';
+
+        let videoDb = [];
+        let currentPos = -1;
+        let selectMode = 'title';
+
+        // ON LOAD
+        window.addEventListener('load', () => {
+            const savedDb = localStorage.getItem(DB_KEY);
+            const savedPos = localStorage.getItem(POS_KEY);
+
+            if (savedDb) {
+                videoDb = JSON.parse(savedDb);
+                if (savedPos !== null) {
+                    currentPos = parseInt(savedPos);
+                    renderQueue();
+                } else {
+                    showSetup();
+                }
+            } else {
+                showUpload();
+            }
+        });
+
+        // VIEW NAVIGATION
+        function showUpload() {
+            document.getElementById('view-upload').classList.remove('hidden');
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-queue').classList.add('hidden');
+        }
+
+        function showSetup() {
+            document.getElementById('view-upload').classList.add('hidden');
+            document.getElementById('view-setup').classList.remove('hidden');
+            document.getElementById('view-queue').classList.add('hidden');
+            refreshSelect();
+        }
+
+        function setSelectMode(mode) {
+            selectMode = mode;
+            document.getElementById('setup-title-ui').classList.toggle('hidden', mode !== 'title');
+            document.getElementById('setup-date-ui').classList.toggle('hidden', mode !== 'date');
+            document.getElementById('tab-title').className = `flex-1 py-2 rounded-lg text-xs font-bold ${mode==='title'?'tab-active':'text-slate-400'}`;
+            document.getElementById('tab-date').className = `flex-1 py-2 rounded-lg text-xs font-bold ${mode==='date'?'tab-active':'text-slate-400'}`;
+            refreshSelect();
+        }
+
+        // PARSING
+        document.getElementById('file-input').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => parseMhtml(event.target.result);
+            reader.readAsText(file);
+        };
+
+        function parseMhtml(content) {
+            const status = document.getElementById('parse-status');
+            status.innerText = "Parsing file...";
+
+            // Find snapshot date from MHTML header
+            let snapshotDate = new Date();
+            const dateMatch = content.match(/Date:\s+(.+?)\r?\n/);
+            if (dateMatch) snapshotDate = new Date(dateMatch[1]);
+
+            // Clean MHTML encoding
+            const clean = content.replace(/=\r?\n/g, '').replace(/=3D/g, '=');
+
+            // Regex for videoId, title, and relative time
+            // Based on standard YouTube mobile/desktop JSON structure found in snapshots
+            const regex = /"videoId":"([a-zA-Z0-9_-]{11})".+?"title":\{"runs":\[\{"text":"(.+?)"\}\].+?"publishedTimeText":\{"simpleText":"(.+?)"\}/g;
+            const matches = [...clean.matchAll(regex)];
+            
+            const videos = [];
+            const seen = new Set();
+
+            matches.forEach(m => {
+                const id = m[1];
+                if (seen.has(id)) return;
+                seen.add(id);
+
+                const title = m[2].replace(/\\u([0-9a-fA-F]{4})/g, (_, c) => String.fromCharCode(parseInt(c, 16)));
+                const relTime = m[3];
+
+                // Estimate date based on relative time
+                let d = new Date(snapshotDate);
+                const val = parseInt(relTime);
+                if (relTime.includes('year')) d.setFullYear(d.getFullYear() - val);
+                else if (relTime.includes('month')) d.setMonth(d.getMonth() - val);
+                else if (relTime.includes('week')) d.setDate(d.getDate() - (val * 7));
+                else if (relTime.includes('day')) d.setDate(d.getDate() - val);
+
+                videos.push({ id, title, date: d.toISOString().split('T')[0], ts: d.getTime() });
+            });
+
+            if (videos.length === 0) {
+                // Emergency fallback for basic link structures
+                const altRegex = /watch\?v=([a-zA-Z0-9_-]{11}).*?aria-label="(.+?)"/g;
+                const altMatches = [...clean.matchAll(altRegex)];
+                altMatches.forEach(m => {
+                    if (seen.has(m[1])) return;
+                    seen.add(m[1]);
+                    videos.push({ id: m[1], title: m[2].split(' by ')[0], date: '2025-Unknown', ts: 0 });
+                });
+            }
+
+            if (videos.length > 0) {
+                videos.sort((a, b) => b.ts - a.ts); // Newest first
+                videoDb = videos;
+                localStorage.setItem(DB_KEY, JSON.stringify(videoDb));
+                status.innerText = `Found ${videos.length} episodes!`;
+                showSetup();
+            } else {
+                status.innerText = "Error: Could not find video data in this file.";
+            }
+        }
+
+        // POSITION SELECTION
+        function refreshSelect() {
+            const select = document.getElementById('video-select');
+            const search = document.getElementById('setup-search').value.toLowerCase();
+            const dateVal = document.getElementById('setup-date-jump').value;
+            select.innerHTML = '';
+
+            let filtered = [...videoDb];
+            if (selectMode === 'title' && search) {
+                filtered = videoDb.filter(v => v.title.toLowerCase().includes(search) || v.date.includes(search));
+            } else if (selectMode === 'date' && dateVal) {
+                const targetTs = new Date(dateVal).getTime();
+                filtered = [...videoDb].sort((a, b) => Math.abs(a.ts - targetTs) - Math.abs(b.ts - targetTs)).slice(0, 50);
+            }
+
+            filtered.forEach(v => {
+                const idx = videoDb.findIndex(item => item.id === v.id);
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `[${v.date}] ${v.title}`;
+                opt.className = "py-2 px-1 border-b border-slate-700";
+                select.appendChild(opt);
+            });
+        }
+
+        document.getElementById('setup-search').oninput = refreshSelect;
+        document.getElementById('setup-date-jump').onchange = refreshSelect;
+
+        function confirmPosition() {
+            const select = document.getElementById('video-select');
+            if (select.value === "") return;
+            currentPos = parseInt(select.value);
+            localStorage.setItem(POS_KEY, currentPos);
+            renderQueue();
+        }
+
+        // QUEUE RENDERING
+        function renderQueue() {
+            document.getElementById('view-upload').classList.add('hidden');
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-queue').classList.remove('hidden');
+
+            const container = document.getElementById('queue-container');
+            const status = document.getElementById('queue-status');
+            container.innerHTML = '';
+
+            const current = videoDb[currentPos];
+            if (current) status.innerText = `Current: ${current.date}`;
+
+            // Show 5 most recent videos AFTER the current watched index (closer to index 0)
+            let count = 0;
+            for (let i = currentPos - 1; i >= 0 && count < 5; i--) {
+                const v = videoDb[i];
+                const card = document.createElement('div');
+                card.className = "mythical-card p-4 rounded-2xl flex flex-col gap-4 shadow-xl border-l-4 border-l-orange-500/40";
+                
+                // MULTI-PROTOCOL APP TRIGGER
+                const gmmId = v.id;
+                const moreSearch = encodeURIComponent("Good Mythical More " + v.title);
+                
+                // Deep Link Protocols
+                const gmmApp = `vnd.youtube:${gmmId}`;
+                const moreApp = `vnd.youtube:results?search_query=${moreSearch}`;
+                
+                // Standard Links
+                const gmmWeb = `https://www.youtube.com/watch?v=${gmmId}`;
+                const moreWeb = `https://www.youtube.com/results?search_query=${moreSearch}`;
+
+                card.innerHTML = `
+                    <div class="flex gap-4">
+                        <img src="https://img.youtube.com/vi/${gmmId}/mqdefault.jpg" class="w-24 h-14 sm:w-32 sm:h-18 object-cover rounded-xl bg-black shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[9px] text-orange-500 font-bold uppercase tracking-widest mb-0.5">${v.date}</div>
+                            <h3 class="font-bold text-white text-xs sm:text-sm line-clamp-2 leading-tight">${v.title}</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="openApp('${gmmApp}', '${gmmWeb}')" class="flex-1 py-3 bg-orange-600 rounded-xl text-[10px] font-black uppercase text-center active:scale-95 transition">
+                            Open GMM App
+                        </button>
+                        <button onclick="openApp('${moreApp}', '${moreWeb}')" class="flex-1 py-3 bg-slate-700 rounded-xl text-[10px] font-black uppercase text-center active:scale-95 transition">
+                            Open More App
+                        </button>
+                    </div>
+                    
+                    <div class="flex justify-between items-center px-1">
+                        <button onclick="markDone(${i})" class="text-[9px] font-bold text-green-500 uppercase tracking-widest hover:underline">Mark Finished</button>
+                        <div class="flex gap-3">
+                            <a href="${gmmWeb}" target="_blank" class="text-[8px] text-slate-500 uppercase font-bold">Web GMM</a>
+                            <a href="${moreWeb}" target="_blank" class="text-[8px] text-slate-500 uppercase font-bold">Web More</a>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+                count++;
+            }
+            document.getElementById('done-state').classList.toggle('hidden', count > 0);
+        }
+
+        function openApp(protocol, webFallback) {
+            // Attempt to open the app via protocol
+            const start = Date.now();
+            window.location.href = protocol;
+            
+            // If after 1 second the page hasn't switched focus, open the web link
+            setTimeout(() => {
+                if (Date.now() - start < 1500) {
+                    window.open(webFallback, '_blank');
+                }
+            }, 1000);
+        }
+
+        function markDone(i) {
+            currentPos = i;
+            localStorage.setItem(POS_KEY, currentPos);
+            renderQueue();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
+
         <div id="setup-view" class="hidden space-y-6">
             <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-xl">
                 <div id="upload-section">
